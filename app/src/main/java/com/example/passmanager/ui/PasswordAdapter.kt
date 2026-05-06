@@ -10,6 +10,7 @@ import com.example.passmanager.data.PasswordEntry
 
 class PasswordAdapter(
     private var items: List<PasswordEntry>,
+    private val onEditClick: (PasswordEntry) -> Unit,
     private val onDeleteClick: (String) -> Unit
 ) : RecyclerView.Adapter<PasswordAdapter.ViewHolder>() {
 
@@ -31,6 +32,10 @@ class PasswordAdapter(
         holder.tvLogin.text = "Логин: ${item.login}"
         holder.tvPassword.text = "Пароль: ${item.password}"
         
+        holder.itemView.setOnClickListener {
+            onEditClick(item)
+        }
+
         holder.itemView.setOnLongClickListener {
             onDeleteClick(item.serviceName)
             true

@@ -20,6 +20,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        supportActionBar?.hide()
         setContentView(R.layout.activity_main)
 
         masterPassword = intent.getStringExtra("MASTER_PASSWORD") ?: ""
@@ -29,9 +30,11 @@ class MainActivity : AppCompatActivity() {
         val rvPasswords = findViewById<RecyclerView>(R.id.rvPasswords)
         val fabAdd = findViewById<FloatingActionButton>(R.id.fabAdd)
 
-        adapter = PasswordAdapter(emptyList()) { serviceName ->
-            showDeleteConfirmation(serviceName)
-        }
+        adapter = PasswordAdapter(
+            emptyList(),
+            onEditClick = { entry -> showEditPasswordDialog(entry) },
+            onDeleteClick = { serviceName -> showDeleteConfirmation(serviceName) }
+        )
         rvPasswords.layoutManager = LinearLayoutManager(this)
         rvPasswords.adapter = adapter
 
@@ -70,6 +73,33 @@ class MainActivity : AppCompatActivity() {
                     storage.saveEntry(entry, masterPassword)
                     refreshList()
                 }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun showEditPasswordDialog(entry: PasswordEntry) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_password, null)
+        val etName = dialogView.findViewById<EditText>(R.id.etServiceName)
+        val etLogin = dialogView.findViewById<EditText>(R.id.etLogin)
+        val etPass = dialogView.findViewById<EditText>(R.id.etPassword)
+
+        etName.setText(entry.serviceName)
+        etName.isEnabled = false 
+        etLogin.setText(entry.login)
+        etPass.setText(entry.password)
+
+        AlertDialog.Builder(this)
+            .setTitle("Редактировать")
+            .setView(dialogView)
+            .setPositiveButton("Обновить") { _, _ ->
+                val updatedEntry = PasswordEntry(
+                    entry.serviceName,
+                    etLogin.text.toString(),
+                    etPass.text.toString()
+                )
+                storage.saveEntry(updatedEntry, masterPassword)
+                refreshList()
             }
             .setNegativeButton("Отмена", null)
             .show()
