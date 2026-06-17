@@ -15,10 +15,13 @@ class Storage(context: Context) {
 
     fun getEntry(serviceName: String, masterPassword: String): PasswordEntry? {
         val encryptedData = preferences.getString(serviceName, null) ?: return null
+        val decryptedData = Encryption.decrypt(encryptedData, masterPassword) ?: return null
+        
         return try {
-            val decryptedData = Encryption.decrypt(encryptedData, masterPassword)
             val parts = decryptedData.split("|")
-            PasswordEntry(serviceName, parts[0], parts[1])
+            if (parts.size >= 2) {
+                PasswordEntry(serviceName, parts[0], parts[1])
+            } else null
         } catch (e: Exception) {
             null
         }

@@ -2,34 +2,66 @@ package com.example.passmanager.data
 
 import android.util.Base64
 import javax.crypto.Cipher
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
-import java.security.MessageDigest
+import java.security.SecureRandom
 
 object Encryption {
-    private const val ALGORITHM = "AES"
+    private const val ALGORITHM = "AES/GCM/NoPadding"
+    private const val TAG_LENGTH = 128
+    private const val IV_LENGTH = 12
+    private const val SALT_LENGTH = 16
+    private const val ITERATIONS = 65536
+    private const val KEY_LENGTH = 256
 
-    private fun generateKey(password: String): SecretKeySpec {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val bytes = password.toByteArray()
-        digest.update(bytes, 0, bytes.size)
-        val key = digest.digest()
-        return SecretKeySpec(key, ALGORITHM)
+    private fun deriveKey(password: String, salt: ByteArray): SecretKeySpec {
+        val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val spec = PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
+        val keyBytes = factory.generateSecret(spec).encoded
+        return SecretKeySpec(keyBytes, "AES")
     }
 
     fun encrypt(plainText: String, masterPassword: String): String {
-        val secretKey = generateKey(masterPassword)
+        val random = SecureRandom()
+        
+        val salt = ByteArray(SALT_LENGTH)
+        random.nextBytes(salt)
+        
+        val iv = ByteArray(IV_LENGTH)
+        random.nextBytes(iv)
+        
+        val secretKey = deriveKey(masterPassword, salt)
         val cipher = Cipher.getInstance(ALGORITHM)
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+        val gcmSpec = GCMParameterSpec(TAG_LENGTH, iv)
+        
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec)
+        
         val encryptedBytes = cipher.doFinal(plainText.toByteArray())
-        return Base64.encodeToString(encryptedBytes, Base64.DEFAULT)
+        
+        val combined = salt + iv + encryptedBytes
+        return Base64.encodeToString(combined, Base64.NO_WRAP)
     }
 
-    fun decrypt(encryptedText: String, masterPassword: String): String {
-        val secretKey = generateKey(masterPassword)
-        val cipher = Cipher.getInstance(ALGORITHM)
-        cipher.init(Cipher.DECRYPT_MODE, secretKey)
-        val decodedBytes = Base64.decode(encryptedText, Base64.DEFAULT)
-        val decryptedBytes = cipher.doFinal(decodedBytes)
-        return String(decryptedBytes)
+    fun decrypt(encryptedText: String, masterPassword: String): String? {
+        return try {
+            val combined = Base64.decode(encryptedText, Base64.NO_WRAP)
+            
+            if (combined.size < SALT_LENGTH + IV_LENGTH) return null
+
+            val salt = combined.sliceArray(0 until SALT_LENGTH)
+            val iv = combined.sliceArray(SALT_LENGTH until SALT_LENGTH + IV_LENGTH)
+            val encryptedBytes = combined.sliceArray(SALT_LENGTH + IV_LENGTH until combined.size)
+            
+            val secretKey = deriveKey(masterPassword, salt)
+            val cipher = Cipher.getInstance(ALGORITHM)
+            val gcmSpec = GCMParameterSpec(TAG_LENGTH, iv)
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec)
+            
+            String(cipher.doFinal(encryptedBytes))
+        } catch (e: Exception) {
+            null
+        }
     }
 }
