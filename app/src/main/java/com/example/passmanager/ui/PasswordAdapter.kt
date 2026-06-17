@@ -1,12 +1,10 @@
 package com.example.passmanager.ui
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.passmanager.R
 import com.example.passmanager.data.PasswordEntry
+import com.example.passmanager.databinding.ItemPasswordBinding
 
 class PasswordAdapter(
     private var items: List<PasswordEntry>,
@@ -14,23 +12,22 @@ class PasswordAdapter(
     private val onDeleteClick: (String) -> Unit
 ) : RecyclerView.Adapter<PasswordAdapter.ViewHolder>() {
 
-    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val tvName: TextView = view.findViewById(R.id.tvName)
-        val tvLogin: TextView = view.findViewById(R.id.tvLogin)
-        val tvPassword: TextView = view.findViewById(R.id.tvPassword)
-    }
+    class ViewHolder(val binding: ItemPasswordBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_password, parent, false)
-        return ViewHolder(view)
+        val binding = ItemPasswordBinding.inflate(
+            LayoutInflater.from(parent.context),
+            parent,
+            false
+        )
+        return ViewHolder(binding)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = items[position]
-        holder.tvName.text = item.serviceName
-        holder.tvLogin.text = "Логин: ${item.login}"
-        holder.tvPassword.text = "Пароль: ${item.password}"
+        holder.binding.tvName.text = item.serviceName
+        holder.binding.tvLogin.text = "Логин: ${item.login}"
+        holder.binding.tvPassword.text = "Пароль: ${item.password}"
         
         holder.itemView.setOnClickListener {
             onEditClick(item)

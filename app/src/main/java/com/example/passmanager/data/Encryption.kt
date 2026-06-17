@@ -1,6 +1,5 @@
 package com.example.passmanager.data
 
-import android.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
@@ -12,8 +11,8 @@ object Encryption {
     private const val ALGORITHM = "AES/GCM/NoPadding"
     private const val TAG_LENGTH = 128
     private const val IV_LENGTH = 12
-    private const val SALT_LENGTH = 16
-    private const val ITERATIONS = 65536
+    private const val SALT_LENGTH = 32
+    private const val ITERATIONS = 256000
     private const val KEY_LENGTH = 256
 
     private fun deriveKey(password: String, salt: ByteArray): SecretKeySpec {
@@ -21,6 +20,15 @@ object Encryption {
         val spec = PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
         val keyBytes = factory.generateSecret(spec).encoded
         return SecretKeySpec(keyBytes, "AES")
+    }
+
+    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+
+    private fun String.decodeHex(): ByteArray {
+        check(length % 2 == 0) { "Must have an even length" }
+        return chunked(2)
+            .map { it.toInt(16).toByte() }
+            .toByteArray()
     }
 
     fun encrypt(plainText: String, masterPassword: String): String {
@@ -41,12 +49,12 @@ object Encryption {
         val encryptedBytes = cipher.doFinal(plainText.toByteArray())
         
         val combined = salt + iv + encryptedBytes
-        return Base64.encodeToString(combined, Base64.NO_WRAP)
+        return combined.toHex()
     }
 
     fun decrypt(encryptedText: String, masterPassword: String): String? {
         return try {
-            val combined = Base64.decode(encryptedText, Base64.NO_WRAP)
+            val combined = encryptedText.decodeHex()
             
             if (combined.size < SALT_LENGTH + IV_LENGTH) return null
 

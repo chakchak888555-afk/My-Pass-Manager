@@ -1,44 +1,39 @@
 package com.example.passmanager.ui
 
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.example.passmanager.R
 import com.example.passmanager.data.PasswordEntry
 import com.example.passmanager.data.Storage
-import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.example.passmanager.databinding.ActivityMainBinding
+import com.example.passmanager.databinding.DialogAddPasswordBinding
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var binding: ActivityMainBinding
     private lateinit var storage: Storage
     private lateinit var adapter: PasswordAdapter
     private var masterPassword = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
         supportActionBar?.hide()
-        setContentView(R.layout.activity_main)
 
         masterPassword = intent.getStringExtra("MASTER_PASSWORD") ?: ""
-        
         storage = Storage(this)
         
-        val rvPasswords = findViewById<RecyclerView>(R.id.rvPasswords)
-        val fabAdd = findViewById<FloatingActionButton>(R.id.fabAdd)
-
         adapter = PasswordAdapter(
             emptyList(),
             onEditClick = { entry -> showEditPasswordDialog(entry) },
             onDeleteClick = { serviceName -> showDeleteConfirmation(serviceName) }
         )
-        rvPasswords.layoutManager = LinearLayoutManager(this)
-        rvPasswords.adapter = adapter
+        binding.rvPasswords.layoutManager = LinearLayoutManager(this)
+        binding.rvPasswords.adapter = adapter
 
-        fabAdd.setOnClickListener {
+        binding.fabAdd.setOnClickListener {
             showAddPasswordDialog()
         }
 
@@ -54,21 +49,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAddPasswordDialog() {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_password, null)
-        val etName = dialogView.findViewById<EditText>(R.id.etServiceName)
-        val etLogin = dialogView.findViewById<EditText>(R.id.etLogin)
-        val etPass = dialogView.findViewById<EditText>(R.id.etPassword)
+        val dialogBinding = DialogAddPasswordBinding.inflate(layoutInflater)
 
         AlertDialog.Builder(this)
             .setTitle("Добавить пароль")
-            .setView(dialogView)
+            .setView(dialogBinding.root)
             .setPositiveButton("Сохранить") { _, _ ->
-                val name = etName.text.toString()
+                val name = dialogBinding.etServiceName.text.toString()
                 if (name.isNotEmpty()) {
                     val entry = PasswordEntry(
                         name,
-                        etLogin.text.toString(),
-                        etPass.text.toString()
+                        dialogBinding.etLogin.text.toString(),
+                        dialogBinding.etPassword.text.toString()
                     )
                     storage.saveEntry(entry, masterPassword)
                     refreshList()
@@ -79,24 +71,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showEditPasswordDialog(entry: PasswordEntry) {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_password, null)
-        val etName = dialogView.findViewById<EditText>(R.id.etServiceName)
-        val etLogin = dialogView.findViewById<EditText>(R.id.etLogin)
-        val etPass = dialogView.findViewById<EditText>(R.id.etPassword)
+        val dialogBinding = DialogAddPasswordBinding.inflate(layoutInflater)
 
-        etName.setText(entry.serviceName)
-        etName.isEnabled = false 
-        etLogin.setText(entry.login)
-        etPass.setText(entry.password)
+        dialogBinding.etServiceName.setText(entry.serviceName)
+        dialogBinding.etServiceName.isEnabled = false 
+        dialogBinding.etLogin.setText(entry.login)
+        dialogBinding.etPassword.setText(entry.password)
 
         AlertDialog.Builder(this)
             .setTitle("Редактировать")
-            .setView(dialogView)
+            .setView(dialogBinding.root)
             .setPositiveButton("Обновить") { _, _ ->
                 val updatedEntry = PasswordEntry(
                     entry.serviceName,
-                    etLogin.text.toString(),
-                    etPass.text.toString()
+                    dialogBinding.etLogin.text.toString(),
+                    dialogBinding.etPassword.text.toString()
                 )
                 storage.saveEntry(updatedEntry, masterPassword)
                 refreshList()
